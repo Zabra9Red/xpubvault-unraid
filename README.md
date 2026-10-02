@@ -9,6 +9,10 @@ and it never holds anything that could spend.
 This repository holds only what Unraid needs. The application's source is
 not public.
 
+**[The complete guide](GUIDE.md)** — install, first start, unlocking after a
+reboot, balances from your own node, the dashboard tile, backups, updates,
+maintenance and troubleshooting.
+
 | File | What it is |
 |---|---|
 | `xpubvault.xml` | The container template |
