@@ -1,0 +1,32 @@
+<?xml version="1.0"?>
+<!--
+  XPUBVAULT for Unraid's Community Applications (§11). Rendered by
+  `make unraid-template OWNER=<account>`: ghcr.io/zabra9red/xpubvault:0.16.1 becomes the published image
+  by version (and digest, if given), never :latest. <ExtraParams> is the whole
+  of §3.5 — the same hardening as docker-compose.yml — and must not be
+  trimmed: without it the container runs with Docker's default capabilities
+  and a writable root.
+-->
+<Container version="2">
+  <Name>XPUBVAULT</Name>
+  <Repository>ghcr.io/zabra9red/xpubvault:0.16.1</Repository>
+  <Registry>https://ghcr.io/zabra9red/xpubvault</Registry>
+  <Network>bridge</Network>
+  <Privileged>false</Privileged>
+  <Support>https://github.com/zabra9red/xpubvault-unraid/issues</Support>
+  <Project>https://github.com/zabra9red/xpubvault-unraid</Project>
+  <Overview>Offline, watch-only wallet viewer: paste an xpub, a descriptor or an address and it derives, verifies and keeps every address in an encrypted vault. It never accepts a private key and works with the network cable unplugged. Before the first start, own the appdata folder by the container's UID: chown -R 10999:10999 /mnt/user/appdata/xpubvault &amp;&amp; chmod 700 /mnt/user/appdata/xpubvault</Overview>
+  <Category>Tools: Productivity: Security:</Category>
+  <WebUI>https://[IP]:[PORT:8760]/</WebUI>
+  <Icon>https://raw.githubusercontent.com/zabra9red/xpubvault-unraid/main/icon.png</Icon>
+  <Requires>Before the first start, in a terminal: chown -R 10999:10999 /mnt/user/appdata/xpubvault &amp;&amp; chmod 700 /mnt/user/appdata/xpubvault — and again after Unraid's New Permissions tool, which makes shares readable by everyone and so is refused. The container prints this command whenever it finds the folder wrong.</Requires>
+  <ExtraParams>--user 10999:10999 --read-only --tmpfs /tmp:size=64m,noexec,nosuid,nodev --cap-drop=ALL --security-opt=no-new-privileges:true --ulimit memlock=67108864 --ulimit core=0</ExtraParams>
+  <Config Name="WebUI Port" Target="8760" Default="8760" Mode="tcp" Description="Web interface port (HTTPS, with a certificate the container generates: compare its fingerprint with the one in the log)." Type="Port" Display="always" Required="true">8760</Config>
+  <Config Name="Data" Target="/data" Default="/mnt/user/appdata/xpubvault" Mode="rw" Description="Vault, database and config. Must be owned by the container UID (10999 by default) with no group or other access; the container prints the exact chown command if it is not." Type="Path" Display="always" Required="true">/mnt/user/appdata/xpubvault</Config>
+  <Config Name="Mode" Target="XV_MODE" Default="AIRGAP" Description="AIRGAP | LOCAL | PUBLIC. On a bridged network AIRGAP is enforced by the application only, and the UI says so; for isolation by the network itself, see the README. LOCAL is needed for a Tang server." Type="Variable" Display="always" Required="true">AIRGAP</Config>
+  <Config Name="Keys" Target="/keys" Default="" Mode="rw" Description="OPTIONAL keyfile for unattended starts, and the widget key when the dashboard projection is on. Must be a DIFFERENT DEVICE from appdata: an Unassigned Devices USB stick, or a tmpfs filled at array start from somewhere that is not the flash drive. A folder under /mnt/user/appdata sits on the same disks and inside every appdata backup, and is refused." Type="Path" Display="always" Required="false"></Config>
+  <Config Name="TPM" Target="/dev/tpmrm0" Default="" Mode="" Description="OPTIONAL: /dev/tpmrm0, to seal the widget key to this machine's TPM (§5.9). The container's user must be able to read and write it (Extra Parameters: --group-add with the group that owns it)." Type="Device" Display="advanced" Required="false"></Config>
+  <Config Name="Keyfile" Target="XV_KEYFILE" Default="" Description="OPTIONAL: the keyfile's name under /keys (e.g. xpubvault.key) to unlock with at every start. Refused if it sits under /data or is readable by group or other." Type="Variable" Display="advanced" Required="false"></Config>
+  <Config Name="Tang at start" Target="XV_TANG" Default="0" Description="1: unlock at every start through the vault's Tang servers (added in Settings; needs Mode LOCAL). Fails safe: locked when no Tang server answers." Type="Variable" Display="advanced" Required="false">0</Config>
+  <Config Name="Host names" Target="XV_HOSTNAMES" Default="" Description="OPTIONAL: names you open the WebUI by, comma-separated, for the certificate (IP addresses always work)." Type="Variable" Display="advanced" Required="false"></Config>
+</Container>

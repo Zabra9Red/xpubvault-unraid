@@ -1,0 +1,259 @@
+<?xml version='1.0' standalone='yes'?>
+<PLUGIN name="xpubvault" author="zabra9red" version="2026.10.02" pluginURL="https://raw.githubusercontent.com/zabra9red/xpubvault-unraid/main/xpubvault.plg" min="6.12.0" icon="lock">
+<CHANGES>
+### 2026.10.02
+- The XPUBVAULT dashboard tile: wallets, totals and sync age, and the
+  locked, projection and stale states of the service (§12).
+</CHANGES>
+<FILE Name="/usr/local/emhttp/plugins/xpubvault/XPUBVAULTDashboard.page"><INLINE><![CDATA[Menu="Dashboard:0"
+Cond="version_compare(parse_ini_file('/etc/unraid-version')['version'],'6.12.0','>=')"
+---
+<?php
+// XPUBVAULT on the Unraid dashboard (§11): wallet count, total balance and
+// sync age — and, since on Unraid the vault is locked after every array
+// start, which of §12's states it is in: live, the locked projection (with
+// its age), locked with nothing shown, or stale. Built with textContent only.
+$mytiles['xpubvault']['column2'] = <<<'EOT'
+<tbody id="xpubvault-tile" title="XPUBVAULT">
+<tr><td>
+<span class="tile-header">
+<span class="tile-header-left">
+<i class="fa fa-lock f32"></i>
+<div class="section">
+<h3 class="tile-header-main">XPUBVAULT</h3>
+<span id="xpubvault-state">…</span>
+</div>
+</span>
+<span class="tile-header-right">
+<span class="tile-header-right-controls">
+<a href="/Settings/XPUBVAULT" title="Tile settings"><i class="fa fa-fw fa-cog control"></i></a>
+</span>
+</span>
+</span>
+</td></tr>
+<tr><td><div id="xpubvault-figures"></div></td></tr>
+<script>
+(function () {
+  var state = document.getElementById('xpubvault-state');
+  var figures = document.getElementById('xpubvault-figures');
+  function age(s) {
+    if (s < 90) return s + ' s';
+    if (s < 5400) return Math.round(s / 60) + ' min';
+    if (s < 129600) return Math.round(s / 3600) + ' h';
+    return Math.round(s / 86400) + ' d';
+  }
+  function line(text) {
+    var div = document.createElement('div');
+    div.textContent = text;
+    figures.appendChild(div);
+  }
+  function render(s) {
+    figures.textContent = '';
+    var words = {
+      live: 'live',
+      projection: '🔒 while locked',
+      locked: '🔒 locked — nothing shown',
+      stale: '🔒 stale — figures dropped',
+      waiting: 'waiting for the array',
+      unconfigured: 'not set up — see its settings',
+      error: 'XPUBVAULT did not answer'
+    };
+    var text = words[s.state] || words.error;
+    if (s.state === 'projection' && typeof s.projection_age_seconds === 'number') {
+      text += ', as of ' + age(s.projection_age_seconds) + ' ago';
+    }
+    state.textContent = text;
+    (s.balances || []).forEach(function (b) { line(b.confirmed + ' ' + b.coin); });
+    if (typeof s.wallets === 'number') line(s.wallets + ' wallets');
+    if (typeof s.sync_age_seconds === 'number') line('last sync ' + age(s.sync_age_seconds) + ' ago');
+    (s.problems || []).forEach(function (p) { line(p); });
+  }
+  function load() {
+    fetch('/plugins/xpubvault/summary.php', { credentials: 'same-origin', cache: 'no-store' })
+      .then(function (r) { return r.json(); })
+      .then(render, function () { render({ state: 'error' }); });
+  }
+  load();
+  setInterval(load, 60000);
+})();
+</script>
+</tbody>
+EOT;
+?>
+]]></INLINE></FILE>
+<FILE Name="/usr/local/emhttp/plugins/xpubvault/XPUBVAULT.page"><INLINE><![CDATA[Menu="Utilities"
+Title="XPUBVAULT"
+Icon="lock"
+---
+<?php
+// The tile's settings (§11): where the service is, where its widget token
+// and its certificate are. Stored on the flash drive — so the token itself
+// is not: it stays in a file on the array or a pool.
+require_once '/usr/local/emhttp/plugins/xpubvault/include/tile.php';
+$c = xv_config();
+$problems = xv_config_problems($c);
+?>
+<p>The XPUBVAULT dashboard tile asks the container for its summary (§12) with a widget
+token. Mint one in XPUBVAULT under Settings → Widgets → <b>New token</b>, scope
+<b>summary</b> only, and save it in a file on the array or a pool — for example
+<code>/mnt/user/appdata/xpubvault-tile/widget.token</code>, <code>chmod 600</code>. Not on
+the flash drive: <code>/boot</code> is in the flash backup, which many people upload.</p>
+<p>The certificate is the container's <code>/data/tls/cert.pem</code> — under its appdata
+folder — and the address must be one of its <code>XV_HOSTNAMES</code>.</p>
+<?php foreach ($problems as $p): ?>
+<p class="red-text"><?= htmlspecialchars($p, ENT_QUOTES) ?></p>
+<?php endforeach; ?>
+<form markdown="1" method="POST" action="/update.php" target="progressFrame">
+<input type="hidden" name="#file" value="xpubvault/xpubvault.cfg">
+<input type="hidden" name="csrf_token" value="<?= htmlspecialchars($var['csrf_token'] ?? '', ENT_QUOTES) ?>">
+
+Service address:
+: <input type="text" name="SERVICE_URL" value="<?= htmlspecialchars($c['url'], ENT_QUOTES) ?>" placeholder="https://192.168.1.10:8760">
+
+Token file (on the array):
+: <input type="text" name="TOKEN_FILE" value="<?= htmlspecialchars($c['token_file'], ENT_QUOTES) ?>" placeholder="/mnt/user/appdata/xpubvault-tile/widget.token">
+
+Service certificate:
+: <input type="text" name="CA_FILE" value="<?= htmlspecialchars($c['ca_file'], ENT_QUOTES) ?>" placeholder="/mnt/user/appdata/xpubvault/tls/cert.pem">
+
+&nbsp;
+: <input type="submit" value="Apply">
+</form>
+]]></INLINE></FILE>
+<FILE Name="/usr/local/emhttp/plugins/xpubvault/summary.php"><INLINE><![CDATA[<?php
+// The dashboard tile's one endpoint: the service's summary, cut down to what
+// the tile shows (include/tile.php). Behind the Unraid web UI's own login.
+require_once __DIR__ . '/include/tile.php';
+header('Content-Type: application/json');
+header('Cache-Control: no-store');
+echo json_encode(xv_tile_summary(xv_config()));
+]]></INLINE></FILE>
+<FILE Name="/usr/local/emhttp/plugins/xpubvault/include/tile.php"><INLINE><![CDATA[<?php
+// XPUBVAULT's Unraid dashboard tile (§11): what the tile fetches, and what
+// of it may reach the browser. The token stays on the array — never on the
+// flash drive, which is the flash backup (§5.6) — and never leaves this
+// file's process: the browser gets the state, the wallet count, the per-coin
+// totals and the ages, and nothing else. No address, ever.
+
+const XV_CONFIG = '/boot/config/plugins/xpubvault/xpubvault.cfg';
+
+/** The tile's settings: where the service is, where its token and certificate are. */
+function xv_config(string $path = XV_CONFIG): array
+{
+    $ini = is_readable($path) ? (@parse_ini_file($path) ?: []) : [];
+    return [
+        'url' => trim((string)($ini['SERVICE_URL'] ?? '')),
+        'token_file' => trim((string)($ini['TOKEN_FILE'] ?? '')),
+        'ca_file' => trim((string)($ini['CA_FILE'] ?? '')),
+    ];
+}
+
+/** Why the settings cannot be used, if they cannot. */
+function xv_config_problems(array $c): array
+{
+    $problems = [];
+    if (!preg_match('~^https://[A-Za-z0-9.\-\[\]:]+(:[0-9]{1,5})?/?$~', $c['url'])) {
+        $problems[] = 'the service URL is https://address:port, nothing more';
+    }
+    foreach (['token_file' => 'token', 'ca_file' => 'certificate'] as $key => $what) {
+        $p = $c[$key];
+        if ($p === '' || $p[0] !== '/' || strpos($p, '..') !== false) {
+            $problems[] = "the $what file is an absolute path";
+        }
+    }
+    // The flash drive is backed up — often to the cloud. The token is not
+    // kept there (§11).
+    $token = $c['token_file'];
+    if ($token !== '' && ($token === '/boot' || strpos($token, '/boot/') === 0)) {
+        $problems[] = 'the token is on the flash drive, which is backed up: keep it on the array or a pool';
+    }
+    return $problems;
+}
+
+/** Only the tile's fields, each of the shape it must have. */
+function xv_sanitize($s): array
+{
+    if (!is_array($s) || ($s['schema'] ?? null) !== 1) {
+        return ['state' => 'error'];
+    }
+    $locked = ($s['locked'] ?? true) === true;
+    $health = (string)($s['health'] ?? '');
+    if (!$locked) {
+        $state = 'live';
+    } elseif ($health === 'stale') {
+        $state = 'stale';
+    } elseif (($s['source'] ?? '') === 'projection') {
+        $state = 'projection';
+    } else {
+        $state = 'locked';
+    }
+    $out = ['state' => $state, 'balances' => []];
+    foreach (['wallets', 'sync_age_seconds', 'projection_age_seconds'] as $k) {
+        if (isset($s[$k]) && is_int($s[$k]) && $s[$k] >= 0) {
+            $out[$k] = $s[$k];
+        }
+    }
+    foreach ((array)($s['balances'] ?? []) as $b) {
+        if (!is_array($b)) {
+            continue;
+        }
+        $coin = $b['coin'] ?? null;
+        $amount = $b['confirmed'] ?? null;
+        if (is_string($coin) && preg_match('/^[A-Za-z0-9._-]{1,16}$/', $coin)
+            && is_string($amount) && preg_match('/^-?[0-9]{1,40}(\.[0-9]{1,40})?$/', $amount)) {
+            $out['balances'][] = ['coin' => $coin, 'confirmed' => $amount];
+        }
+    }
+    return $out;
+}
+
+/** Ask the service, with the token from the array and its certificate pinned. */
+function xv_tile_summary(array $c): array
+{
+    $problems = xv_config_problems($c);
+    if ($problems) {
+        return ['state' => 'unconfigured', 'problems' => $problems];
+    }
+    if (!is_readable($c['token_file'])) {
+        // Before the array starts there is no token — and no service either.
+        return ['state' => 'waiting'];
+    }
+    $token = trim((string)file_get_contents($c['token_file']));
+    if (!preg_match('/^xvw_[A-Za-z0-9_\-]{8,256}$/', $token)) {
+        return ['state' => 'unconfigured', 'problems' => ['the token file does not hold a widget token']];
+    }
+    $ch = curl_init(rtrim($c['url'], '/') . '/api/v1/widget/summary');
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_HTTPHEADER => ['Authorization: Bearer ' . $token, 'Accept: application/json'],
+        CURLOPT_CAINFO => $c['ca_file'],
+        CURLOPT_SSL_VERIFYPEER => true,
+        CURLOPT_SSL_VERIFYHOST => 2,
+        CURLOPT_CONNECTTIMEOUT => 3,
+        CURLOPT_TIMEOUT => 10,
+        CURLOPT_FOLLOWLOCATION => false,
+        CURLOPT_PROTOCOLS => CURLPROTO_HTTPS,
+        CURLOPT_MAXFILESIZE => 65536,
+    ]);
+    $body = curl_exec($ch);
+    $status = (int)curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+    curl_close($ch);
+    unset($token);
+    if ($body === false || $status !== 200) {
+        return ['state' => 'error'];
+    }
+    return xv_sanitize(json_decode((string)$body, true));
+}
+]]></INLINE></FILE>
+<FILE Run="/bin/bash"><INLINE><![CDATA[
+# The settings file holds where the service, its token and its certificate
+# are — never the token, which stays on the array (§11).
+mkdir -p "$(dirname /boot/config/plugins/xpubvault/xpubvault.cfg)"
+[ -f /boot/config/plugins/xpubvault/xpubvault.cfg ] || printf 'SERVICE_URL=""\nTOKEN_FILE=""\nCA_FILE=""\n' > /boot/config/plugins/xpubvault/xpubvault.cfg
+echo "XPUBVAULT tile installed: set it up under Settings > Utilities > XPUBVAULT"
+]]></INLINE></FILE>
+<FILE Run="/bin/bash" Method="remove"><INLINE><![CDATA[
+rm -rf /usr/local/emhttp/plugins/xpubvault "$(dirname /boot/config/plugins/xpubvault/xpubvault.cfg)"
+echo "XPUBVAULT tile removed. Its token file on the array is yours to delete."
+]]></INLINE></FILE>
+</PLUGIN>

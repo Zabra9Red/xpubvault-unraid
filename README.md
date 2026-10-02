@@ -1,0 +1,75 @@
+# XPUBVAULT for Unraid
+
+The Community Applications template and the optional dashboard tile for
+**XPUBVAULT**, a watch-only wallet vault: paste an extended public key, an
+output descriptor or an address, and it derives, verifies and keeps every
+address in an encrypted vault. It never accepts a private key or a seed,
+and it never holds anything that could spend.
+
+This repository holds only what Unraid needs. The application's source is
+not public.
+
+| File | What it is |
+|---|---|
+| `xpubvault.xml` | The container template |
+| `icon.png` | Its icon |
+| `xpubvault.plg` | The optional dashboard tile (every file inline, nothing downloaded at install) |
+
+## Status
+
+The template names the image `ghcr.io/zabra9red/xpubvault:0.16.1`. **That
+image is not published yet.** Until it is, the container will not pull.
+
+## Install
+
+1. Copy `xpubvault.xml` to `/boot/config/plugins/dockerMan/templates-user/`
+   on the Unraid server, then **Docker → Add Container** and choose
+   XPUBVAULT.
+2. Before the first start, in a terminal:
+
+   ```sh
+   mkdir -p /mnt/user/appdata/xpubvault
+   chown -R 10999:10999 /mnt/user/appdata/xpubvault
+   chmod 700 /mnt/user/appdata/xpubvault
+   ```
+
+   Unraid's *New Permissions* tool makes shares readable by everyone; run
+   the two commands again after using it.
+3. Start the container and read its log: it prints a one-time **setup code**
+   and the SHA-256 **fingerprint** of the certificate it generated.
+4. Open the WebUI (HTTPS, port 8760), compare the certificate's fingerprint
+   with the one in the log, and enter the setup code.
+
+## Do not trim Extra Parameters
+
+```
+--user 10999:10999 --read-only --tmpfs /tmp:size=64m,noexec,nosuid,nodev --cap-drop=ALL --security-opt=no-new-privileges:true --ulimit memlock=67108864 --ulimit core=0
+```
+
+That line is the container's hardening: its own user, a read-only root, no
+capabilities, no new privileges, no core dumps, and the locked-memory budget
+that keeps keys out of swap. Without it the container runs with Docker's
+defaults.
+
+## Keys path
+
+Leave **Keys** empty unless you want unattended starts. If you set it, it
+must be a different device from appdata — an Unassigned Devices mount, a USB
+stick — never a folder under `/mnt/user/appdata`: a keyfile beside the vault
+it opens protects nothing against a stolen disk.
+
+## The dashboard tile
+
+Install `xpubvault.plg` from **Plugins → Install Plugin** with the URL
+
+```
+https://raw.githubusercontent.com/zabra9red/xpubvault-unraid/main/xpubvault.plg
+```
+
+It reads the service's summary with a widget token you create in the web UI
+(Settings → Widgets). While the vault is locked it shows only what you chose
+to allow there — nothing by default.
+
+## Licence
+
+Apache-2.0, for the files in this repository.
