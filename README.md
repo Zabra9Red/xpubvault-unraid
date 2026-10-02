@@ -15,10 +15,28 @@ not public.
 | `icon.png` | Its icon |
 | `xpubvault.plg` | The optional dashboard tile (every file inline, nothing downloaded at install) |
 
-## Status
+## The image
 
-The template names the image `ghcr.io/zabra9red/xpubvault:0.16.1`. **That
-image is not published yet.** Until it is, the container will not pull.
+The template pulls `ghcr.io/zabra9red/xpubvault:0.16.1`, pinned to the
+digest it was signed under:
+
+```
+sha256:e3ba0fefba4f6cf2b9063c40dc2bb2a700248e8409060555c424b43ae21f38ea
+```
+
+It is built for `linux/amd64` and `linux/arm64` from vendored sources with
+the network off, and signed by the workflow that built it — keyless, in the
+public transparency log. To check it before you run it
+([cosign](https://docs.sigstore.dev/cosign/system_config/installation/)):
+
+```sh
+cosign verify ghcr.io/zabra9red/xpubvault@sha256:e3ba0fefba4f6cf2b9063c40dc2bb2a700248e8409060555c424b43ae21f38ea \
+  --certificate-identity https://github.com/Zabra9Red/xpubvault/.github/workflows/release.yml@refs/tags/v0.16.1 \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com
+```
+
+If `docker pull` answers `denied`, the image has not been switched to public
+yet.
 
 ## Install
 
