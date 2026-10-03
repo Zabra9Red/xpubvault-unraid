@@ -49,8 +49,8 @@ The image is signed by the workflow that built it. With
 machine:
 
 ```sh
-cosign verify ghcr.io/zabra9red/xpubvault@sha256:e3ba0fefba4f6cf2b9063c40dc2bb2a700248e8409060555c424b43ae21f38ea \
-  --certificate-identity https://github.com/Zabra9Red/xpubvault/.github/workflows/release.yml@refs/tags/v0.16.1 \
+cosign verify ghcr.io/zabra9red/xpubvault@sha256:fb04441eec74672c683670d5205c5285d5cc5ab02974fd4399768d274c532b92 \
+  --certificate-identity https://github.com/Zabra9Red/xpubvault/.github/workflows/release.yml@refs/tags/v0.16.2 \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com
 ```
 
@@ -111,7 +111,6 @@ the container runs with Docker's defaults.
 | **Data** | `/mnt/user/appdata/xpubvault` | Vault, database, configuration. Owned by `10999`, mode `700`. |
 | **Mode** | `AIRGAP` | `AIRGAP`, `LOCAL` or `PUBLIC` (section 7). `AIRGAP` makes no outbound connection at all. |
 | **Keys** | *(empty)* | Optional. A keyfile for unattended starts, and the widget key when the dashboard projection is on. **Must be a different device from appdata** (section 6). |
-| **TPM** *(advanced)* | *(empty)* | Optional: `/dev/tpmrm0`, to seal the widget key to this machine's TPM (section 10). |
 | **Keyfile** *(advanced)* | *(empty)* | The keyfile's name under `/keys`, e.g. `xpubvault.key`, to unlock with at every start. |
 | **Tang at start** *(advanced)* | `0` | `1` unlocks at every start through the vault's Tang servers; needs Mode `LOCAL`. |
 | **Host names** *(advanced)* | *(empty)* | Names you open the WebUI by, comma-separated (`tower.lan,vault.home`). IP addresses always work. |
@@ -230,7 +229,7 @@ opens, and inside every appdata backup: it is refused.
    ```sh
    docker run --rm --network none --user 10999:10999 --read-only --cap-drop ALL \
      -v /mnt/disks/vaultkey:/keys \
-     ghcr.io/zabra9red/xpubvault:0.16.1 xpubvault keyfile new /keys/xpubvault.key
+     ghcr.io/zabra9red/xpubvault:0.16.2 xpubvault keyfile new /keys/xpubvault.key
    ```
 
 3. Edit the container: set **Keys** to `/mnt/disks/vaultkey`. Apply.
@@ -389,9 +388,12 @@ Nothing, by default. **Settings → Widgets** offers three choices:
 That copy is encrypted under a key of its own, and where that key lives
 decides what it is worth against a stolen disk — best first:
 
-1. **Sealed to the TPM**: set the template's **TPM** field to `/dev/tpmrm0`
-   and let the container's user use it — add `--group-add <gid>` to Extra
-   Parameters, with the group that owns the device (`stat -c %g /dev/tpmrm0`).
+1. **Sealed to the TPM**: append to **Extra Parameters**
+   `--device=/dev/tpmrm0 --group-add <gid>`, where `<gid>` is the group that
+   owns the device (`stat -c %g /dev/tpmrm0` in the Unraid terminal). There
+   is no TPM field in the template on purpose: Unraid passes every field to
+   `docker run`, and an empty device field stops the container from being
+   created at all.
 2. **On the Keys device**, when **Keys** is a different device from appdata.
 3. **On the data volume** — against a stolen disk this is equivalent to
    plaintext, and the WebUI says so on every page.
@@ -466,7 +468,7 @@ xv() {
     --security-opt no-new-privileges:true --tmpfs /tmp:size=64m,noexec,nosuid,nodev \
     --ulimit core=0 --ulimit memlock=67108864 \
     -v /mnt/user/appdata/xpubvault:/data \
-    ghcr.io/zabra9red/xpubvault:0.16.1 xpubvault "$@"
+    ghcr.io/zabra9red/xpubvault:0.16.2 xpubvault "$@"
 }
 ```
 
@@ -494,6 +496,14 @@ a data folder mounted read-only.
 
 **`docker pull` answers `denied`.** The image has not been made public yet,
 or the digest in the template is not the published one.
+
+**`docker: bad format for path:` when you press Apply.** The container was
+added from the 0.16.1 template, whose optional **TPM** field Unraid passes as
+`--device=''` when it is left empty. Fetch the current template again
+(section 2.1), or edit the container, remove the **TPM** field (it is under
+**Show more settings**) and Apply. With the 0.16.1 image, remove an empty
+**Keyfile** field too: that version reads it as a keyfile with no name and
+stops at once. 0.16.2 treats an empty field as a field not set.
 
 **The browser warns about the certificate.** Expected: the container made it
 itself. Compare the fingerprint with the log (section 4), or with **Settings

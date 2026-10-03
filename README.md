@@ -21,11 +21,11 @@ maintenance and troubleshooting.
 
 ## The image
 
-The template pulls `ghcr.io/zabra9red/xpubvault:0.16.1`, pinned to the
+The template pulls `ghcr.io/zabra9red/xpubvault:0.16.2`, pinned to the
 digest it was signed under:
 
 ```
-sha256:e3ba0fefba4f6cf2b9063c40dc2bb2a700248e8409060555c424b43ae21f38ea
+sha256:fb04441eec74672c683670d5205c5285d5cc5ab02974fd4399768d274c532b92
 ```
 
 It is built for `linux/amd64` and `linux/arm64` from vendored sources with
@@ -34,8 +34,8 @@ public transparency log. To check it before you run it
 ([cosign](https://docs.sigstore.dev/cosign/system_config/installation/)):
 
 ```sh
-cosign verify ghcr.io/zabra9red/xpubvault@sha256:e3ba0fefba4f6cf2b9063c40dc2bb2a700248e8409060555c424b43ae21f38ea \
-  --certificate-identity https://github.com/Zabra9Red/xpubvault/.github/workflows/release.yml@refs/tags/v0.16.1 \
+cosign verify ghcr.io/zabra9red/xpubvault@sha256:fb04441eec74672c683670d5205c5285d5cc5ab02974fd4399768d274c532b92 \
+  --certificate-identity https://github.com/Zabra9Red/xpubvault/.github/workflows/release.yml@refs/tags/v0.16.2 \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com
 ```
 
