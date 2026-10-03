@@ -10,7 +10,7 @@ This repository holds only what Unraid needs. The application's source is
 not public.
 
 **[The complete guide](GUIDE.md)** — install, first start, unlocking after a
-reboot, balances (your own node, or a public explorer), the dashboard tile, backups, updates,
+reboot, balances (your own node, or public servers picked from a list), the dashboard tile, backups, updates,
 maintenance and troubleshooting.
 
 | File | What it is |
@@ -21,11 +21,11 @@ maintenance and troubleshooting.
 
 ## The image
 
-The template pulls `ghcr.io/zabra9red/xpubvault:0.16.3`, pinned to the
+The template pulls `ghcr.io/zabra9red/xpubvault:0.17.0`, pinned to the
 digest it was signed under:
 
 ```
-sha256:89d96a561800e5152e06ab20e84c9b2201edd3fc213db0b93047560630e43f17
+sha256:ac379b276d5c4a90af3008e624826d971ee80cb4fe04c0112794c21902f1d67f
 ```
 
 It is built for `linux/amd64` and `linux/arm64` from vendored sources with
@@ -34,8 +34,8 @@ public transparency log. To check it before you run it
 ([cosign](https://docs.sigstore.dev/cosign/system_config/installation/)):
 
 ```sh
-cosign verify ghcr.io/zabra9red/xpubvault@sha256:89d96a561800e5152e06ab20e84c9b2201edd3fc213db0b93047560630e43f17 \
-  --certificate-identity https://github.com/Zabra9Red/xpubvault/.github/workflows/release.yml@refs/tags/v0.16.3 \
+cosign verify ghcr.io/zabra9red/xpubvault@sha256:ac379b276d5c4a90af3008e624826d971ee80cb4fe04c0112794c21902f1d67f \
+  --certificate-identity https://github.com/Zabra9Red/xpubvault/.github/workflows/release.yml@refs/tags/v0.17.0 \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com
 ```
 

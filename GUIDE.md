@@ -2,7 +2,7 @@
 
 XPUBVAULT watches wallets. You give it an extended public key, an output
 descriptor or an address; it derives, verifies and keeps every address in an
-encrypted vault, and — pointed at your own node, or at a public explorer — shows balances.
+encrypted vault, and — pointed at your own node, or at public servers — shows balances.
 It never accepts a private key or a seed phrase, and it never holds anything
 that could spend.
 
@@ -114,7 +114,7 @@ the container runs with Docker's defaults.
 | **Keyfile** *(advanced)* | *(empty)* | The keyfile's name under `/keys`, e.g. `xpubvault.key`, to unlock with at every start. |
 | **Tang at start** *(advanced)* | `0` | `1` unlocks at every start through the vault's Tang servers; needs Mode `LOCAL`. |
 | **Host names** *(advanced)* | *(empty)* | Names you open the WebUI by, comma-separated (`tower.lan,vault.home`). IP addresses always work. |
-| **Allow PUBLIC** *(advanced)* | `0` | `1` makes Mode `PUBLIC` selectable at all: balances from public explorers (section 8.2). Choosing it still asks for a confirmation. |
+| **Allow PUBLIC** *(advanced)* | `0` | `1` makes Mode `PUBLIC` selectable at all: balances from public servers (section 8.2). Choosing it still asks for a confirmation. |
 
 One setting has no field; add it with **Add another Path, Port,
 Variable…** only if you need it:
@@ -315,6 +315,9 @@ get them.
 | `evm` (Erigon, Reth, Nethermind, Geth) | An EVM chain, by chain id; ERC-20 too |
 | `cosmos` | The Cosmos chains |
 | `monero-wallet-rpc` | Monero view-only wallets |
+| `solana` · `xrpl` · `tron` · `horizon` · `near` | Solana · XRP Ledger · Tron · Stellar · NEAR (0.17) |
+| `aptos` · `sui` · `tzkt` · `algorand` · `koios` | Aptos · Sui · Tezos (TzKT) · Algorand (algod) · Cardano (Koios) (0.17) |
+| `substrate` | Polkadot and Kusama — an **Asset Hub** node, where their balances live since 2025 (0.17) |
 
 Name the backend by IP address or host name. TLS can be `none` (your LAN),
 `pinned` — **Read it from the server** fetches the certificate's fingerprint
@@ -329,62 +332,67 @@ On Unraid, a Bitcoin node with an Electrum server (Fulcrum or electrs) from
 Community Applications is the usual pair; it needs the whole blockchain
 (well over 600 GB) and a few days to index.
 
-### 8.2 From a public explorer (`PUBLIC`) — the easy way, at a privacy cost
+### 8.2 From public servers (`PUBLIC`) — the easy way, at a privacy cost
 
-No node of your own: a public Esplora explorer answers instead. **It learns
-every address you watch, that they belong together, and your IP address**
-— which is exactly what watching through XPUBVAULT otherwise keeps to
-yourself. Use it knowing that, or run your own (8.1).
+No node of your own: public servers answer instead. **Each learns every
+address it is asked about, that they belong together, and your IP
+address** — which is exactly what watching through XPUBVAULT otherwise
+keeps to yourself. Use it knowing that, or run your own (8.1).
 
 1. Edit the container: **Show more settings → Allow PUBLIC** → `1` → **Apply**.
 2. **Settings → Mode → PUBLIC**, and confirm the warning.
-3. **Settings → Data backends → Fill in a public explorer: mempool.space**
-   (or blockstream.info) — it fills in `esplora`, `mempool.space`, port
-   `443`, TLS `ca`, path `/api` — type the passphrase, **Add backend**.
+3. **Settings → Data backends → Public servers** (0.17 and later): 80
+   servers this version was seen to talk to, with a first choice for every
+   chain ticked. Keep them, or **Tick none** and tick the coins you hold;
+   type the passphrase; **Add**. One passphrase adds them all.
 4. Open a wallet → **Sync now**. Balances appear on every device: the WebUI,
    the dashboard tile, and the paired phone at its next sync.
 
-Every host a `PUBLIC` sync reaches is written to the container's log.
+A server is asked only about wallets on its own chain — but an EVM address
+is one account on every EVM network, and a Cosmos key one on every Cosmos
+chain of its kind, so such a wallet is asked on each of those networks that
+has a server: untick the networks you do not use, and fewer servers see it.
+A second server for a chain is a *spare*, asked only when the first does
+not answer. Every host a `PUBLIC` sync reaches is written to the container's
+log; **Test** shows whether a server still answers, and on which network.
 
-**Public servers that answered this version** (each one asked through
-XPUBVAULT's own **Test**, on 2026-10-03; public servers come and go, so
-**Test** yours after adding it). All free, no account, port and TLS as
-shown; *Path* empty unless given:
+**What the list covers** (each one asked through XPUBVAULT's own Test and a
+real balance on 2026-10-03; public servers come and go):
 
-| Coin | Kind | Host | Port | TLS | Path | Chains field |
-|---|---|---|---|---|---|---|
-| Bitcoin | `esplora` | `mempool.space` | 443 | CA | `/api` | `bitcoin` |
-| Bitcoin | `esplora` | `blockstream.info` | 443 | CA | `/api` | `bitcoin` |
-| Litecoin | `esplora` | `litecoinspace.org` | 443 | CA | `/api` | `litecoin` |
-| Bitcoin Cash | `electrum` | `bch.imaginary.cash` | 50002 | CA | | `bitcoin-cash` |
-| Dogecoin | `electrum` | `doge.aftrek.org` | 50002 | pinned¹ | | `dogecoin` |
-| Ethereum | `evm` | `ethereum-rpc.publicnode.com` | 443 | CA | | `evm:1` |
-| Polygon | `evm` | `polygon-bor-rpc.publicnode.com` | 443 | CA | | `evm:137` |
-| Arbitrum One | `evm` | `arbitrum-one-rpc.publicnode.com` | 443 | CA | | `evm:42161` |
-| OP Mainnet | `evm` | `optimism-rpc.publicnode.com` | 443 | CA | | `evm:10` |
-| Base | `evm` | `base-rpc.publicnode.com` | 443 | CA | | `evm:8453` |
-| BNB Smart Chain | `evm` | `bsc-rpc.publicnode.com` | 443 | CA | | `evm:56` |
-| Avalanche C-Chain | `evm` | `avalanche-c-chain-rpc.publicnode.com` | 443 | CA | | `evm:43114` |
-| Gnosis | `evm` | `gnosis-rpc.publicnode.com` | 443 | CA | | `evm:100` |
-| Cosmos Hub | `cosmos` | `cosmos-rest.publicnode.com` | 443 | CA | | `cosmoshub` |
-| Osmosis | `cosmos` | `osmosis-rest.publicnode.com` | 443 | CA | | `osmosis` |
-| Celestia | `cosmos` | `celestia-rest.publicnode.com` | 443 | CA | | `celestia` |
-| Injective | `cosmos` | `injective-rest.publicnode.com` | 443 | CA | | `injective` |
-| dYdX | `cosmos` | `dydx-rest.publicnode.com` | 443 | CA | | `dydx` |
-| Sei | `cosmos` | `sei-rest.publicnode.com` | 443 | CA | | `sei` |
-| Juno | `cosmos` | `juno-rest.publicnode.com` | 443 | CA | | `juno` |
-| Akash | `cosmos` | `akash-rest.publicnode.com` | 443 | CA | | `akash` |
+| Coins | Servers (first choice, then spares) |
+|---|---|
+| Bitcoin | mempool.space, blockstream.info |
+| Litecoin | litecoinspace.org, electrum-ltc.bysh.me (pinned¹) |
+| Bitcoin Cash | bch.imaginary.cash, bch.loping.net |
+| Dogecoin | doge.aftrek.org (pinned¹) |
+| Ethereum, Polygon, Arbitrum, OP, Base, BNB, Avalanche, Gnosis | PublicNode, with each network's own RPC (or MEV Blocker, 1RPC) as the spare |
+| 40 Cosmos chains | PublicNode, Polkachu, Lavender.Five, cosmos.directory |
+| Solana | api.mainnet-beta.solana.com, PublicNode |
+| XRP | xrplcluster.com, s2.ripple.com |
+| Tron (TRX, USDT, USDC) | PublicNode, TronGrid |
+| Stellar | horizon.stellar.org |
+| NEAR | FastNEAR, rpc.mainnet.near.org |
+| Aptos | PublicNode, Aptos Labs |
+| Sui | graphql.mainnet.sui.io |
+| Tezos | api.tzkt.io |
+| Algorand | Nodely (algonode.cloud) |
+| Cardano | api.koios.rest |
+| Polkadot, Kusama | Parity's Asset Hub RPCs |
 
-¹ A self-signed certificate: choose **pinned certificate**, press **Read it
-from the server**, and pin what it shows. Pinning a stranger's certificate
-proves you keep talking to the same server, not who runs it.
+¹ A self-signed certificate, pinned to the one it showed when the list was
+made. If its owner renews it, **Test** says so: remove it, and read the new
+one with **Add a backend → pinned certificate → Read it from the server**.
 
-Found **no working free public server** for Dash, Zcash, DigiByte,
-Vertcoin, Noble or Neutron (Trezor's public servers refuse other apps;
-PublicNode has no REST for the last two): those need a server of your own,
-or read *no backend has answered*. Monero needs your own
-`monero-wallet-rpc` by design (it holds the view key). One EVM backend per
-network: an EVM address is watched on every network that has one.
+Not in the list, for want of a free public server that answered: Dash,
+Zcash, DigiByte, Vertcoin, Groestlcoin, and the Cosmos chains Kujira,
+IRISnet, Quicksilver, Chihuahua, Comdex and Canto — those need a server of
+your own, or read *no backend has answered*. Monero needs your own
+`monero-wallet-rpc` by design (it holds the view key). NEAR is watched by
+its public key (`ed25519:…`): a bare 64-hex implicit account is refused,
+because it looks exactly like a private key.
+
+On 0.16.x, fill in the form by hand instead: **Add a backend** with the
+kind, host, port 443, TLS `ca` and, for mempool.space, path `/api`.
 
 ---
 

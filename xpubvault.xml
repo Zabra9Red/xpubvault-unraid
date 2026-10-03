@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <!--
   XPUBVAULT for Unraid's Community Applications (§11). Rendered by
-  `make unraid-template OWNER=<account>`: ghcr.io/zabra9red/xpubvault:0.16.3@sha256:89d96a561800e5152e06ab20e84c9b2201edd3fc213db0b93047560630e43f17 becomes the published image
+  `make unraid-template OWNER=<account>`: ghcr.io/zabra9red/xpubvault:0.17.0@sha256:ac379b276d5c4a90af3008e624826d971ee80cb4fe04c0112794c21902f1d67f becomes the published image
   by version (and digest, if given), never :latest. <ExtraParams> is the whole
   of §3.5 — the same hardening as docker-compose.yml — and must not be
   trimmed: without it the container runs with Docker's default capabilities
@@ -9,7 +9,7 @@
 -->
 <Container version="2">
   <Name>XPUBVAULT</Name>
-  <Repository>ghcr.io/zabra9red/xpubvault:0.16.3@sha256:89d96a561800e5152e06ab20e84c9b2201edd3fc213db0b93047560630e43f17</Repository>
+  <Repository>ghcr.io/zabra9red/xpubvault:0.17.0@sha256:ac379b276d5c4a90af3008e624826d971ee80cb4fe04c0112794c21902f1d67f</Repository>
   <Registry>https://ghcr.io/zabra9red/xpubvault</Registry>
   <Network>bridge</Network>
   <Privileged>false</Privileged>
