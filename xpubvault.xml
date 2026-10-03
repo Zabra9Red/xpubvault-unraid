@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <!--
   XPUBVAULT for Unraid's Community Applications (§11). Rendered by
-  `make unraid-template OWNER=<account>`: ghcr.io/zabra9red/xpubvault:0.16.2@sha256:fb04441eec74672c683670d5205c5285d5cc5ab02974fd4399768d274c532b92 becomes the published image
+  `make unraid-template OWNER=<account>`: ghcr.io/zabra9red/xpubvault:0.16.3@sha256:89d96a561800e5152e06ab20e84c9b2201edd3fc213db0b93047560630e43f17 becomes the published image
   by version (and digest, if given), never :latest. <ExtraParams> is the whole
   of §3.5 — the same hardening as docker-compose.yml — and must not be
   trimmed: without it the container runs with Docker's default capabilities
@@ -9,7 +9,7 @@
 -->
 <Container version="2">
   <Name>XPUBVAULT</Name>
-  <Repository>ghcr.io/zabra9red/xpubvault:0.16.2@sha256:fb04441eec74672c683670d5205c5285d5cc5ab02974fd4399768d274c532b92</Repository>
+  <Repository>ghcr.io/zabra9red/xpubvault:0.16.3@sha256:89d96a561800e5152e06ab20e84c9b2201edd3fc213db0b93047560630e43f17</Repository>
   <Registry>https://ghcr.io/zabra9red/xpubvault</Registry>
   <Network>bridge</Network>
   <Privileged>false</Privileged>
@@ -23,7 +23,8 @@
   <ExtraParams>--user 10999:10999 --read-only --tmpfs /tmp:size=64m,noexec,nosuid,nodev --cap-drop=ALL --security-opt=no-new-privileges:true --ulimit memlock=67108864 --ulimit core=0</ExtraParams>
   <Config Name="WebUI Port" Target="8760" Default="8760" Mode="tcp" Description="Web interface port (HTTPS, with a certificate the container generates: compare its fingerprint with the one in the log)." Type="Port" Display="always" Required="true">8760</Config>
   <Config Name="Data" Target="/data" Default="/mnt/user/appdata/xpubvault" Mode="rw" Description="Vault, database and config. Must be owned by the container UID (10999 by default) with no group or other access; the container prints the exact chown command if it is not." Type="Path" Display="always" Required="true">/mnt/user/appdata/xpubvault</Config>
-  <Config Name="Mode" Target="XV_MODE" Default="AIRGAP" Description="AIRGAP | LOCAL | PUBLIC. On a bridged network AIRGAP is enforced by the application only, and the UI says so; for isolation by the network itself, see the README. LOCAL is needed for a Tang server." Type="Variable" Display="always" Required="true">AIRGAP</Config>
+  <Config Name="Mode" Target="XV_MODE" Default="AIRGAP" Description="AIRGAP: no balances, nothing leaves. LOCAL: balances from a server you run on your network (Electrum or Fulcrum, Bitcoin Core, Blockbook, an EVM node). PUBLIC: from public explorers too, such as mempool.space; needs Allow PUBLIC = 1. On a bridged network AIRGAP is enforced by the application only, and the UI says so; for isolation by the network itself, see the README. LOCAL is needed for a Tang server." Type="Variable" Display="always" Required="true">AIRGAP</Config>
+  <Config Name="Allow PUBLIC" Target="XV_ALLOW_PUBLIC" Default="0" Description="1 lets Mode PUBLIC be chosen at all: balances from public explorers, which then learn every address they are asked about, and this server's address. Choosing it still asks for a confirmation in Settings. 0 keeps PUBLIC out of reach." Type="Variable" Display="advanced" Required="false">0</Config>
   <Config Name="Keys" Target="/keys" Default="" Mode="rw" Description="OPTIONAL keyfile for unattended starts, and the widget key when the dashboard projection is on. Must be a DIFFERENT DEVICE from appdata: an Unassigned Devices USB stick, or a tmpfs filled at array start from somewhere that is not the flash drive. A folder under /mnt/user/appdata sits on the same disks and inside every appdata backup, and is refused." Type="Path" Display="always" Required="false"></Config>
   <Config Name="Keyfile" Target="XV_KEYFILE" Default="" Description="OPTIONAL: the keyfile's name under /keys (e.g. xpubvault.key) to unlock with at every start. Refused if it sits under /data or is readable by group or other." Type="Variable" Display="advanced" Required="false"></Config>
   <Config Name="Tang at start" Target="XV_TANG" Default="0" Description="1: unlock at every start through the vault's Tang servers (added in Settings; needs Mode LOCAL). Fails safe: locked when no Tang server answers." Type="Variable" Display="advanced" Required="false">0</Config>

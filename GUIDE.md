@@ -2,7 +2,7 @@
 
 XPUBVAULT watches wallets. You give it an extended public key, an output
 descriptor or an address; it derives, verifies and keeps every address in an
-encrypted vault, and — if you point it at your own node — shows balances.
+encrypted vault, and — pointed at your own node, or at a public explorer — shows balances.
 It never accepts a private key or a seed phrase, and it never holds anything
 that could spend.
 
@@ -18,7 +18,7 @@ address of a wallet, past and future. This guide treats it that way.
 5. [Everyday use](#5-everyday-use)
 6. [Unlocking after an array start](#6-unlocking-after-an-array-start)
 7. [Modes, and real network isolation](#7-modes-and-real-network-isolation)
-8. [Balances from your own node](#8-balances-from-your-own-node)
+8. [Balances](#8-balances)
 9. [The dashboard tile](#9-the-dashboard-tile)
 10. [What dashboards can see while the vault is locked](#10-what-dashboards-can-see-while-the-vault-is-locked)
 11. [Backups and restores](#11-backups-and-restores)
@@ -49,8 +49,8 @@ The image is signed by the workflow that built it. With
 machine:
 
 ```sh
-cosign verify ghcr.io/zabra9red/xpubvault@sha256:fb04441eec74672c683670d5205c5285d5cc5ab02974fd4399768d274c532b92 \
-  --certificate-identity https://github.com/Zabra9Red/xpubvault/.github/workflows/release.yml@refs/tags/v0.16.2 \
+cosign verify ghcr.io/zabra9red/xpubvault@sha256:89d96a561800e5152e06ab20e84c9b2201edd3fc213db0b93047560630e43f17 \
+  --certificate-identity https://github.com/Zabra9Red/xpubvault/.github/workflows/release.yml@refs/tags/v0.16.3 \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com
 ```
 
@@ -109,19 +109,19 @@ the container runs with Docker's defaults.
 |---|---|---|
 | **WebUI Port** | `8760` | HTTPS. The container generates its own certificate; you check its fingerprint once (section 4). |
 | **Data** | `/mnt/user/appdata/xpubvault` | Vault, database, configuration. Owned by `10999`, mode `700`. |
-| **Mode** | `AIRGAP` | `AIRGAP`, `LOCAL` or `PUBLIC` (section 7). `AIRGAP` makes no outbound connection at all. |
+| **Mode** | `AIRGAP` | `AIRGAP`, `LOCAL` or `PUBLIC` (section 7). `AIRGAP` makes no outbound connection at all — and so shows no balances (section 8). |
 | **Keys** | *(empty)* | Optional. A keyfile for unattended starts, and the widget key when the dashboard projection is on. **Must be a different device from appdata** (section 6). |
 | **Keyfile** *(advanced)* | *(empty)* | The keyfile's name under `/keys`, e.g. `xpubvault.key`, to unlock with at every start. |
 | **Tang at start** *(advanced)* | `0` | `1` unlocks at every start through the vault's Tang servers; needs Mode `LOCAL`. |
 | **Host names** *(advanced)* | *(empty)* | Names you open the WebUI by, comma-separated (`tower.lan,vault.home`). IP addresses always work. |
+| **Allow PUBLIC** *(advanced)* | `0` | `1` makes Mode `PUBLIC` selectable at all: balances from public explorers (section 8.2). Choosing it still asks for a confirmation. |
 
-Two settings have no field; add them with **Add another Path, Port,
-Variable…** only if you need them:
+One setting has no field; add it with **Add another Path, Port,
+Variable…** only if you need it:
 
 | Variable | Default | What it does |
 |---|---|---|
 | `XV_IDLE_LOCK_MINUTES` | `60` | Locks the vault after this long without a request. |
-| `XV_ALLOW_PUBLIC` | *(unset)* | `1` makes Mode `PUBLIC` selectable at all. |
 
 There is **no field for a passphrase**, and you should not add one
 (`XV_PASSPHRASE`): it would sit in `docker inspect`, in the template file on
@@ -229,7 +229,7 @@ opens, and inside every appdata backup: it is refused.
    ```sh
    docker run --rm --network none --user 10999:10999 --read-only --cap-drop ALL \
      -v /mnt/disks/vaultkey:/keys \
-     ghcr.io/zabra9red/xpubvault:0.16.2 xpubvault keyfile new /keys/xpubvault.key
+     ghcr.io/zabra9red/xpubvault:0.16.3 xpubvault keyfile new /keys/xpubvault.key
    ```
 
 3. Edit the container: set **Keys** to `/mnt/disks/vaultkey`. Apply.
@@ -294,11 +294,16 @@ The service cannot see a firewall, so the amber label stays either way.
 
 ---
 
-## 8. Balances from your own node
+## 8. Balances
 
-Balances come from servers you run, and from nothing else.
+In `AIRGAP` — the default — XPUBVAULT asks no one, so it shows no
+balances, on any device: every wallet reads *Balance: off in AIRGAP*. A
+balance is never shown as zero when it is not known. There are two ways to
+get them.
 
-1. Set **Mode** to `LOCAL`.
+### 8.1 From a server you run (`LOCAL`) — the private way
+
+1. Set **Mode** to `LOCAL` (**Settings → Mode**, or the template's field).
 2. **Settings → Data backends → Add a backend**. It asks for the passphrase
    again, because it changes where your addresses are sent.
 
@@ -319,6 +324,67 @@ Syncs run when something is added, when the vault unlocks, every 30 minutes,
 and on **Sync now**. A backend that knows history also finds addresses past
 the gap window. Bitcoin Core alone cannot tell a spent-out address from an
 unused one, and the wallet says so (`PARTIAL`) rather than stopping silently.
+
+On Unraid, a Bitcoin node with an Electrum server (Fulcrum or electrs) from
+Community Applications is the usual pair; it needs the whole blockchain
+(well over 600 GB) and a few days to index.
+
+### 8.2 From a public explorer (`PUBLIC`) — the easy way, at a privacy cost
+
+No node of your own: a public Esplora explorer answers instead. **It learns
+every address you watch, that they belong together, and your IP address**
+— which is exactly what watching through XPUBVAULT otherwise keeps to
+yourself. Use it knowing that, or run your own (8.1).
+
+1. Edit the container: **Show more settings → Allow PUBLIC** → `1` → **Apply**.
+2. **Settings → Mode → PUBLIC**, and confirm the warning.
+3. **Settings → Data backends → Fill in a public explorer: mempool.space**
+   (or blockstream.info) — it fills in `esplora`, `mempool.space`, port
+   `443`, TLS `ca`, path `/api` — type the passphrase, **Add backend**.
+4. Open a wallet → **Sync now**. Balances appear on every device: the WebUI,
+   the dashboard tile, and the paired phone at its next sync.
+
+Every host a `PUBLIC` sync reaches is written to the container's log.
+
+**Public servers that answered this version** (each one asked through
+XPUBVAULT's own **Test**, on 2026-10-03; public servers come and go, so
+**Test** yours after adding it). All free, no account, port and TLS as
+shown; *Path* empty unless given:
+
+| Coin | Kind | Host | Port | TLS | Path | Chains field |
+|---|---|---|---|---|---|---|
+| Bitcoin | `esplora` | `mempool.space` | 443 | CA | `/api` | `bitcoin` |
+| Bitcoin | `esplora` | `blockstream.info` | 443 | CA | `/api` | `bitcoin` |
+| Litecoin | `esplora` | `litecoinspace.org` | 443 | CA | `/api` | `litecoin` |
+| Bitcoin Cash | `electrum` | `bch.imaginary.cash` | 50002 | CA | | `bitcoin-cash` |
+| Dogecoin | `electrum` | `doge.aftrek.org` | 50002 | pinned¹ | | `dogecoin` |
+| Ethereum | `evm` | `ethereum-rpc.publicnode.com` | 443 | CA | | `evm:1` |
+| Polygon | `evm` | `polygon-bor-rpc.publicnode.com` | 443 | CA | | `evm:137` |
+| Arbitrum One | `evm` | `arbitrum-one-rpc.publicnode.com` | 443 | CA | | `evm:42161` |
+| OP Mainnet | `evm` | `optimism-rpc.publicnode.com` | 443 | CA | | `evm:10` |
+| Base | `evm` | `base-rpc.publicnode.com` | 443 | CA | | `evm:8453` |
+| BNB Smart Chain | `evm` | `bsc-rpc.publicnode.com` | 443 | CA | | `evm:56` |
+| Avalanche C-Chain | `evm` | `avalanche-c-chain-rpc.publicnode.com` | 443 | CA | | `evm:43114` |
+| Gnosis | `evm` | `gnosis-rpc.publicnode.com` | 443 | CA | | `evm:100` |
+| Cosmos Hub | `cosmos` | `cosmos-rest.publicnode.com` | 443 | CA | | `cosmoshub` |
+| Osmosis | `cosmos` | `osmosis-rest.publicnode.com` | 443 | CA | | `osmosis` |
+| Celestia | `cosmos` | `celestia-rest.publicnode.com` | 443 | CA | | `celestia` |
+| Injective | `cosmos` | `injective-rest.publicnode.com` | 443 | CA | | `injective` |
+| dYdX | `cosmos` | `dydx-rest.publicnode.com` | 443 | CA | | `dydx` |
+| Sei | `cosmos` | `sei-rest.publicnode.com` | 443 | CA | | `sei` |
+| Juno | `cosmos` | `juno-rest.publicnode.com` | 443 | CA | | `juno` |
+| Akash | `cosmos` | `akash-rest.publicnode.com` | 443 | CA | | `akash` |
+
+¹ A self-signed certificate: choose **pinned certificate**, press **Read it
+from the server**, and pin what it shows. Pinning a stranger's certificate
+proves you keep talking to the same server, not who runs it.
+
+Found **no working free public server** for Dash, Zcash, DigiByte,
+Vertcoin, Noble or Neutron (Trezor's public servers refuse other apps;
+PublicNode has no REST for the last two): those need a server of your own,
+or read *no backend has answered*. Monero needs your own
+`monero-wallet-rpc` by design (it holds the view key). One EVM backend per
+network: an EVM address is watched on every network that has one.
 
 ---
 
@@ -468,7 +534,7 @@ xv() {
     --security-opt no-new-privileges:true --tmpfs /tmp:size=64m,noexec,nosuid,nodev \
     --ulimit core=0 --ulimit memlock=67108864 \
     -v /mnt/user/appdata/xpubvault:/data \
-    ghcr.io/zabra9red/xpubvault:0.16.2 xpubvault "$@"
+    ghcr.io/zabra9red/xpubvault:0.16.3 xpubvault "$@"
 }
 ```
 
@@ -527,9 +593,11 @@ wrong. The vault stays locked and waits for the passphrase.
 **`KEYFILE_SAME_DEVICE`.** The keyfile is on the same disk as appdata
 (section 6.2). It works; it protects nothing against that disk being taken.
 
-**Balances say "no backend".** No backend has answered for that chain: Mode
-is `AIRGAP`, or none is configured, or it is unreachable (**Settings → Data
-backends** shows its last error).
+**Balances say "off in AIRGAP".** The default mode asks no one: section 8.
+
+**Balances say "no backend has answered".** None is configured for that
+chain, or the one configured failed — **Settings → Data backends** shows its
+last error. A public host in `LOCAL` is refused: it needs `PUBLIC` (8.2).
 
 **The tile says "locked" after a reboot.** The projection is off (section
 10), which is the default — or the vault is simply locked and you chose to
